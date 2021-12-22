@@ -13,7 +13,6 @@ import datetime as dt
 debug = True
 
 ##########
-# FINISH ADD TASK
 # ADD DELETE FROM DF, JS FUNCTION CURRENTLY ONLY DELETES FROM UI WHICH CAUSES ERROR WHEN FUNCTION READDED TO DATE
 # ADD EDIT TASK FUNCTION
 # SIDE MENU IMPLEMENTAION
@@ -28,9 +27,18 @@ class Test(QtCore.QObject):  # OBJECT TO CALL FROM JS IN QML. QML PROPERTY SET T
     def __init__(self):
         QtCore.QObject.__init__(self)
 
-    @Slot(str, str)
-    def debug(self, text, text1):
-        print(f'Begin Degug:\n{text} {text1}')
+    @Slot(int, str)
+    def deleteTaskPy(self, buttonId, date):
+        tasks = pd.read_csv('df.csv')
+        print(tasks)
+        tasks.drop(tasks[(tasks['Date'] == date) & (tasks['Button id'] == buttonId)].index, inplace=True)
+        self.refreshTasks(date, False)
+        tasks.to_csv('df.csv', index=False)
+
+
+    @Slot(str, str, str)
+    def debug(self, text, text1, text2):
+        print(f'Begin Degug:\n{text} {text1} {text2}')
 
     def refreshTasks(self, date, refresh):  # SHOW TASKS AS BUTTONS
         tasks = pd.read_csv('df.csv')
@@ -48,7 +56,7 @@ class Test(QtCore.QObject):  # OBJECT TO CALL FROM JS IN QML. QML PROPERTY SET T
             task = task.split('(')[0]
             task = task.rstrip('\n')
             # print(task)
-            rootObject.createButton(task, buttonId)
+            rootObject.createButton(task, buttonId, date)
             print('test1', buttonId)
         # else:
         #     for task in taskList:  # LOOP TO CALL JS FUNCTION FOR EACH TASK
@@ -72,7 +80,7 @@ class Test(QtCore.QObject):  # OBJECT TO CALL FROM JS IN QML. QML PROPERTY SET T
             task = task.split('(')[0]
             task = task.rstrip('\n')
             # print(task)
-            rootObject.createButton(task, buttonId)
+            rootObject.createButton(task, buttonId, date)
         # else:
         #     for task in taskList:  # LOOP TO CALL JS FUNCTION FOR EACH TASK
         #         task = task.split('(')[0]

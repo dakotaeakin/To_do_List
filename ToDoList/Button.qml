@@ -10,14 +10,16 @@ Rectangle {
     // has clicked. The id must be unique
     property int buttonId;
     property string taskName;
+    property string butDate1;
 
-    signal clicked(string buttonId, string taskName);
+
+    signal clicked(int buttonId, string taskName, string butDate1);
 
     MouseArea {
         id: mouse1
         opacity: 0
         anchors.fill: parent
-        onClicked: parent.clicked(parent.buttonId, parent.taskName)
+        onClicked: parent.clicked(parent.buttonId, parent.taskName, parent.butDate1)
     }
 
     Text {
