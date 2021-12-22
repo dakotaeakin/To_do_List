@@ -13,8 +13,8 @@ import datetime as dt
 debug = True
 
 ##########
-# ADD DELETE FROM DF, JS FUNCTION CURRENTLY ONLY DELETES FROM UI WHICH CAUSES ERROR WHEN FUNCTION READDED TO DATE
-# ADD EDIT TASK FUNCTION
+# !DONE! ADD DELETE FROM DF, JS FUNCTION CURRENTLY ONLY DELETES FROM UI WHICH CAUSES ERROR WHEN FUNCTION READDED TO DATE
+# !DONE! ADD EDIT TASK FUNCTION
 # SIDE MENU IMPLEMENTAION
 # ADD SETTINGS MENU AND FILE
 # IMPLEMENT DARK MODE THEME
@@ -27,70 +27,36 @@ class Test(QtCore.QObject):  # OBJECT TO CALL FROM JS IN QML. QML PROPERTY SET T
     def __init__(self):
         QtCore.QObject.__init__(self)
 
+    def creatButtonPy(self, task, buttonId, date):  # GENERATES TASK BUTTONS IN UI
+        rootObject = engine.rootObjects()[0]
+        task = task.split('(')[0]
+        task = task.rstrip('\n')
+        rootObject.createButton(task, buttonId, date)
+
     @Slot(int, str)
     def deleteTaskPy(self, buttonId, date):
         tasks = pd.read_csv('df.csv')
-        print(tasks)
+        # print(tasks)
         tasks.drop(tasks[(tasks['Date'] == date) & (tasks['Button id'] == buttonId)].index, inplace=True)
-        self.refreshTasks(date, False)
         tasks.to_csv('df.csv', index=False)
-
+        self.showTasks(date)
 
     @Slot(str, str, str)
     def debug(self, text, text1, text2):
         print(f'Begin Degug:\n{text} {text1} {text2}')
 
-    def refreshTasks(self, date, refresh):  # SHOW TASKS AS BUTTONS
-        tasks = pd.read_csv('df.csv')
-        # print(tasks)
+    def showTasks(self, date):  # SHOW TASKS AS BUTTONS
         rootObject = engine.rootObjects()[0]
+        tasks = pd.read_csv('df.csv')
         date = dt.datetime.strptime(date, '''%B %d, %Y ''')
         date = date.strftime('''%B %d, %Y ''')
         df = tasks.loc[(tasks['Date'] == date)]
-        taskList = df['Task'].values.tolist()
-        # print('Task is', date)
-        if refresh is True:
-            i = 0
-        for task in taskList:  # LOOP TO CALL JS FUNCTION FOR EACH TASK
-            buttonId = df.loc[(df['Task'] == task), 'Button id'].item()
-            task = task.split('(')[0]
-            task = task.rstrip('\n')
-            # print(task)
-            rootObject.createButton(task, buttonId, date)
-            print('test1', buttonId)
-        # else:
-        #     for task in taskList:  # LOOP TO CALL JS FUNCTION FOR EACH TASK
-        #         task = task.split('(')[0]
-        #         task = task.rstrip('\n')
-        #         # print(task)
-        #         rootObject.createButton(task)
+        print(df)
+        df.apply(lambda row: self.creatButtonPy(row['Task'], row['Button id'], row['Date']), axis=1)
+        rootObject.taskBoxReAn()
 
-    def showTasks(self, date, refresh, buttonId):  # SHOW TASKS AS BUTTONS
-        tasks = pd.read_csv('df.csv')
-        print(tasks)
-        rootObject = engine.rootObjects()[0]
-        date = dt.datetime.strptime(date, '''%B %d, %Y ''')
-        date = date.strftime('''%B %d, %Y ''')
-        df = tasks.loc[(tasks['Date'] == date)]
-        taskList = df['Task'].values.tolist()
-        # print('Task is', date)
-        if refresh is True:
-            i = 0
-        for task in taskList:  # LOOP TO CALL JS FUNCTION FOR EACH TASK
-            task = task.split('(')[0]
-            task = task.rstrip('\n')
-            # print(task)
-            rootObject.createButton(task, buttonId, date)
-        # else:
-        #     for task in taskList:  # LOOP TO CALL JS FUNCTION FOR EACH TASK
-        #         task = task.split('(')[0]
-        #         task = task.rstrip('\n')
-        #         # print(task)
-        #         rootObject.createButton(task)
-
-    @QtCore.Slot(str, str, str)
-    def addTaskPy(self, task, taskDate, date):  # ADD NEW TASK
-        # TRY LOOP FAILS IF NUM EXISTS, EDIT TO HANDLE?
+    @QtCore.Slot(str, str, str, int)
+    def addTaskPy(self, task, taskDate, date, existingId):  # ADD NEW TASK
         # REPLACE TRY LOOP?
         # global tasks
         global taskNum
@@ -100,32 +66,26 @@ class Test(QtCore.QObject):  # OBJECT TO CALL FROM JS IN QML. QML PROPERTY SET T
         #####
         # CHECK IF TASK EXISTS ON DATE
         #####
-        try:
-            list1 = tasks.loc[(tasks['Date'] == date) & (tasks['Button id'])]
-            # if taskDate in taskNum:  # CHANGE PD LOC FOR DATE AND NUM
-            num = list1['Button id'].max() + 1
-            if np.isnan(num):
+        if existingId != 0:
+            buttonId = existingId
+        else:
+            try:
+                list1 = tasks.loc[(tasks['Date'] == date)]
+                print(list1['Button id'])
+                num = list1['Button id'].max() + 1
+                if np.isnan(num):
+                    num = 1
+            except Exception as e:
+                if debug:
+                    print(e)
                 num = 1
-            # else:
-            #     num = 1
-            # np.where(tasks['Date'] == taskDate, num=tasks.loc(tasks['Date'], 'Button id').max(), num=1)
-        except Exception as e:
-            if debug:
-                print(e)
-            num = 1
-            pass
-        # num = list
-        buttonId = num
-        # taskNum.setdefault(taskDate, []).append(buttonId)
+                pass
+            buttonId = num
 
         taskTemp = pd.DataFrame({'Date': [taskDate], 'Button id': [buttonId], 'Task': [f'{task}({taskDate}{taskNum})']})
         taskTemp.to_csv('df.csv', mode='a', header=False)
         self.call()
-        self.showTasks(taskDate, True, buttonId)
-        # print("date", taskDate)
-        # self.showTasks(taskDate)  # Need to add arg for range of dates
-        if debug:
-            print("test", num)
+        self.showTasks(taskDate)
 
     @QtCore.Slot('QString')
     def call(self):
@@ -152,7 +112,7 @@ class Test(QtCore.QObject):  # OBJECT TO CALL FROM JS IN QML. QML PROPERTY SET T
 
         if update is True:
             self.call()
-            self.refreshTasks(date, False)
+            self.showTasks(date)
             rootObject.taskBoxReAn()
 
         engine.rootContext().setContextProperty("date", date)

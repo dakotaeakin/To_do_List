@@ -30,25 +30,21 @@ Window {
 
     //Functions:
     //Add task functions:
-    function editExistingTask()
+    function editExistingTask(task, date)
     {
-        //ADD FUNCTIONALITY TO DELETE OLD TASK AND ADD NEW TASK
-        testModel.debug(globButId, globTaskName)
+        testModel.debug(globButId, globTaskName, '')
+        deleteTask()
+        testModel.addTaskPy(task, date, date, globButId)
     }
 
     function deleteTask()
     {
-        //ADD CALL TO BACKEND TO DELETE TASK FROM DF
-//        testModel.debug(globButId, globButDate, '')
+        testModel.debug(globButId, globButDate, '')
+        popupClickOffVis = false
+        popupVis = false
+        popupEditTaskVis = false
+        destroyButtons()
         testModel.deleteTaskPy(globButId, globButDate)
-        for (var x = 0; x < taskColumn.children.length; ++x){
-            if (taskColumn.children[x].buttonId === globButId){
-                taskColumn.children[x].destroy()
-                popupClickOffVis = false
-                popupVis = false
-                popupEditTaskVis = false
-            }
-        }
     }
 
     function taskBoxReAn()
@@ -76,7 +72,7 @@ Window {
     function addTaskX(task, date)
     {
         console.log(date)
-        testModel.addTaskPy(task, date, date)
+        testModel.addTaskPy(task, date, date, 0)
         popupClickOffVis = false
         popupVis = false
         popupAddTaskVis = false
@@ -84,11 +80,12 @@ Window {
 
     function buttonClicked(buttonId, taskName, butDate1)
     {
-        testModel.debug(buttonId, taskName, butDate1)
+
         globButId = buttonId
         globTaskName = taskName
         globButDate = butDate1
-//        testModel.debug(globButId, globTaskName)
+//        testModel.debug(buttonId, taskName, butDate1)
+        testModel.debug(globButId, globTaskName, '')
 
 
 
@@ -129,15 +126,18 @@ Window {
         //Connect the clicked signal of the newly created button
         //to the event handler buttonClicked.
         button.clicked.connect(buttonClicked)
+        // button.clicked(globButId = buttonId)
         i += 1
+        testModel.debug(button.buttonId, 'yep', testNum)
 
 
 
     }
+
     Connections {
         target: buttonEditOk
         onClicked: {
-            editExistingTask()
+            editExistingTask(textEdit1.text, date)
         }
     }
 
@@ -404,6 +404,11 @@ Window {
                     popupClickOffVis = false
                     popupVis = false
                     popupAddTaskVis = false
+                    popupEditTaskVis = false
+                    globTaskName: ''
+                    globButId = 0
+                    globNum = 0
+                    globButDate = ''
                 }
             }
         }
@@ -551,5 +556,3 @@ Window {
     }
 
 }
-
-
