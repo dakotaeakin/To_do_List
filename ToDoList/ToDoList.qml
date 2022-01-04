@@ -5,7 +5,6 @@ import QtQuick.Timeline 1.0
 
 
 
-
 Window {
     id: window
     width: 800
