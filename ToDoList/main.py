@@ -21,13 +21,26 @@ debug = True
 ##########
 
 
-class Test(QtCore.QObject):  # OBJECT TO CALL FROM JS IN QML. QML PROPERTY SET TO testModel
+class Test(QtCore.QObject):
+    '''OBJECT TO CALL FROM JS IN QML. QML PROPERTY SET TO testModel'''
+
     global tasks
 
     def __init__(self):
         QtCore.QObject.__init__(self)
 
-    def creatButtonPy(self, task, buttonId, date):  # GENERATES TASK BUTTONS IN UI
+    def check_repeats(self, dateDT):
+        '''Checks for tasks matching day and returns a df of them'''
+
+        repeat_df = pd.read_csv('repeat_df.csv')
+        day = dateDT.isoweekday() # Get day of the week as int where Monday is 1
+        to_repeat = repeat_df.loc[(repeat_df['Reminder'] == day)]
+        return to_repeat
+
+
+    def creatButtonPy(self, task, buttonId, date):
+        '''GENERATES TASK BUTTONS IN UI'''
+
         rootObject = engine.rootObjects()[0]
         task = task.split('(')[0]
         task = task.rstrip('\n')
@@ -36,21 +49,24 @@ class Test(QtCore.QObject):  # OBJECT TO CALL FROM JS IN QML. QML PROPERTY SET T
     @Slot(int, str)
     def deleteTaskPy(self, buttonId, date):
         tasks = pd.read_csv('df.csv')
-        # print(tasks)
         tasks.drop(tasks[(tasks['Date'] == date) & (tasks['Button id'] == buttonId)].index, inplace=True)
         tasks.to_csv('df.csv', index=False)
         self.showTasks(date)
 
     @Slot(str, str, str)
     def debug(self, text, text1, text2):
+        '''Use for printing console.log from JS code'''
+
         print(f'Begin Degug:\n{text} {text1} {text2}')
 
     def showTasks(self, date):  # SHOW TASKS AS BUTTONS
         rootObject = engine.rootObjects()[0]
         tasks = pd.read_csv('df.csv')
         date = dt.datetime.strptime(date, '''%B %d, %Y ''')
+        dateDT = date
         date = date.strftime('''%B %d, %Y ''')
         df = tasks.loc[(tasks['Date'] == date)]
+        df = df.append(self.check_repeats(dateDT)) 
         print(df)
         df.apply(lambda row: self.creatButtonPy(row['Task'], row['Button id'], row['Date']), axis=1)
         rootObject.taskBoxReAn()
@@ -130,14 +146,19 @@ class setup():  # CLASS CONTAINING FUNCTIONS TO BE RAN ON STARTUP OR WHEN SETTIN
         x.getDatePy(0, True, '')  # SETS DATE TO TODAYS DATE
 
     def checkDf():
+        '''Checks for required df files and if they are not found it creates them'''
+
         global tasks, taskNum
         if not os.path.exists('df.csv'):
             tasks = pd.DataFrame(columns=['Date', 'Button id', 'Task', 'Color', 'Reminder'])  # SETUP DATAFRAME
             tasks.to_csv('df.csv')
             if debug:
                 print('Debug in class: setup function: start:\nCreated df.csv file as one was not found')
-        if debug:
-            print('Debug in class: setup function: start:\ndf.csv found')
+        
+        if not os.path.exists('repeat_df.csv'):
+            tasks = pd.DataFrame(columns=['Date', 'Button id', 'Task', 'Color', 'Reminder'])  # SETUP DATAFRAME
+            tasks.to_csv('repeat_df.csv')
+            
         # GLOBAL VARIABLES
         tasks = pd.read_csv('df.csv')  # FILE TO STORE TASKS AND THEIR PROPERTIES
         taskNum = {}
