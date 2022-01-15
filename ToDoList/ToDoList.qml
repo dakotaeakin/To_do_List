@@ -17,11 +17,20 @@ Window {
     property bool popupVis: false
     property bool popupAddTaskVis: false
     property bool popupEditTaskVis: false
+    property bool popupRepeatsVis: false
     property string taskClicked
     property string globTaskName: ''
     property int globButId: 0
     property int globNum: 0
     property string globButDate: ''
+    property int globRepeatsMon: 0
+    property int globRepeatsTue: 0
+    property int globRepeatsWed: 0
+    property int globRepeatsThu: 0
+    property int globRepeatsFri: 0
+    property int globRepeatsSat: 0
+    property int globRepeatsSun: 0
+    property string globRepeats: ''
 
     //Function properties:
     property int i: 1
@@ -29,21 +38,69 @@ Window {
 
     //Functions:
     //Add task functions:
+    function checkForRepeats()
+    {
+        // console.log('glob:', globRepeats)
+
+        if (switchMon.checked){
+            globRepeatsMon = 1
+        } else{
+            globRepeatsMon = 0
+        }
+        if (switchTue.checked){
+            globRepeatsTue = 2
+        } else {
+            globRepeatsTue = 0
+        }
+        if (switchWed.checked){
+            globRepeatsWed = 3
+        } else {
+            globRepeatsWed = 0
+        }
+        if (switchThu.checked){
+            globRepeatsThu = 4
+        } else {
+            globRepeatsThu = 0
+        }
+        if (switchFri.checked){
+            globRepeatsFri = 5
+        } else {
+            globRepeatsFri = 0
+        }
+        if (switchSat.checked){
+            globRepeatsSat = 6
+        } else {
+            globRepeatsSat = 0
+        }
+        if (switchSun.checked){
+            globRepeatsSun = 7
+        } else {
+            globRepeatsSun = 0
+        }
+        
+        const repeatsList = [globRepeatsMon, globRepeatsTue, globRepeatsWed, globRepeatsThu, globRepeatsFri, globRepeatsSat, globRepeatsSun]
+
+        if (repeatsList.some(x => x > 0)){
+            globRepeats = String([globRepeatsMon, globRepeatsTue, globRepeatsWed, globRepeatsThu, globRepeatsFri, globRepeatsSat, globRepeatsSun])
+        } else {
+            globRepeats = ''
+        }
+    }
+
     function editExistingTask(task, date)
     {
         testModel.debug(globButId, globTaskName, '')
         deleteTask()
-        testModel.addTaskPy(task, date, date, globButId)
+        testModel.addTaskPy(task, date, date, globButId, 0)
     }
 
     function deleteTask()
     {
-        testModel.debug(globButId, globButDate, '')
         popupClickOffVis = false
         popupVis = false
         popupEditTaskVis = false
         destroyButtons()
-        testModel.deleteTaskPy(globButId, globButDate)
+        testModel.deleteTaskPy(globTaskName, globButId, globButDate, globRepeats)
     }
 
     function taskBoxReAn()
@@ -53,9 +110,9 @@ Window {
 
     function destroyButtons()
     {
-//        for (var i = 0; i < taskColumn.children.length; ++i){
-//            testModel.debug("debug", taskColumn.children[i].buttonId)
-//        }
+        //        for (var i = 0; i < taskColumn.children.length; ++i){
+        //            testModel.debug("debug", taskColumn.children[i].buttonId)
+        //        }
 
         for (var x = taskColumn.children.length ; x > 1 ; x--){
             taskColumn.children[x-1].destroy()
@@ -70,20 +127,30 @@ Window {
 
     function addTaskX(task, date)
     {
-        console.log(date)
-        testModel.addTaskPy(task, date, date, 0)
+        checkForRepeats()
+        console.log(globRepeats)
+        testModel.addTaskPy(task, date, date, 0, globRepeats)
         popupClickOffVis = false
         popupVis = false
         popupAddTaskVis = false
+        switchMon.checked = false
+        switchTue.checked = false
+        switchWed.checked = false
+        switchThu.checked = false
+        switchFri.checked = false
+        switchSat.checked = false
+        switchSun.checked = false
+        globRepeats = ''
     }
 
-    function buttonClicked(buttonId, taskName, butDate1)
+    function buttonClicked(buttonId, taskName, butDate1, repeats)
     {
 
         globButId = buttonId
         globTaskName = taskName
         globButDate = butDate1
-//        testModel.debug(buttonId, taskName, butDate1)
+        globRepeats = repeats
+        //        testModel.debug(buttonId, taskName, butDate1)
         testModel.debug(globButId, globTaskName, '')
 
 
@@ -92,13 +159,13 @@ Window {
 
         textEdit1.text = taskName
         taskClicked = buttonId
-//        testModel.debug(taskClicked, "")
+        //        testModel.debug(taskClicked, "")
         popupClickOffVis = true
         popupVis = true
         popupEditTaskVis = true
 
     }
-    function createButton(task, testNum, date1)
+    function createButton(task, testNum, date1, color, repeats)
     {
         var component = Qt.createComponent("Button.qml");
         var assignMargin
@@ -116,6 +183,7 @@ Window {
                                                 "buttonId": testNum,
                                                 "taskName": task, //Text displayed
                                                 "butDate1": date1,
+                                                "repeats": repeats,
                                                 "anchors.left": taskColumn.left,
                                                 "anchors.right": taskColumn.right,
                                                 "anchors.rightMargin": 20,
@@ -127,10 +195,39 @@ Window {
         button.clicked.connect(buttonClicked)
         // button.clicked(globButId = buttonId)
         i += 1
-        testModel.debug(button.buttonId, 'yep', testNum)
+        // testModel.debug(button.buttonId, repeats, testNum)
 
 
 
+    }
+
+    Connections{
+        target: buttonPopupRepeatsCancel
+        onClicked:{
+            switchMon.checked = false
+            switchTue.checked = false
+            switchWed.checked = false
+            switchThu.checked = false
+            switchFri.checked = false
+            switchSat.checked = false
+            switchSun.checked = false
+            popupRepeatsVis = false
+            // Add if statement to see if add or edit task and if edit is true then values should not change on cancel
+        }
+    }
+
+    Connections {
+       target: buttonPopupRepeatsOk
+       onClicked:{
+           popupRepeatsVis = false
+       }
+    }
+
+    Connections {
+        target: buttonAddRepeat
+        onClicked:{
+            popupRepeatsVis = true
+        }
     }
 
     Connections {
@@ -400,6 +497,7 @@ Window {
             Connections {
                 target: buttonClickOff
                 onClicked: {
+                    popupRepeatsVis = false
                     popupClickOffVis = false
                     popupVis = false
                     popupAddTaskVis = false
@@ -408,6 +506,7 @@ Window {
                     globButId = 0
                     globNum = 0
                     globButDate = ''
+                    globRepeats = ''
                 }
             }
         }
@@ -431,6 +530,7 @@ Window {
             TextEdit {
                 id: textEdit
                 x: 160
+                visible: true
                 text: qsTr("Enter your task here!")
                 anchors.left: parent.left
                 anchors.right: parent.right
@@ -448,19 +548,27 @@ Window {
             Button {
                 id: buttonPopupAddTask
                 x: 138
+                visible: popupAddTaskVis
                 text: qsTr("Add Task")
-                anchors.left: parent.left
-                anchors.right: parent.right
+                anchors.right: buttonAddRepeat.left
                 anchors.top: textEdit.bottom
                 anchors.bottom: parent.bottom
+                anchors.rightMargin: 32
                 anchors.topMargin: 20
-                anchors.rightMargin: 150
-                anchors.leftMargin: 150
                 anchors.bottomMargin: 20
 
 
 
 
+            }
+
+            Button {
+                id: buttonAddRepeat
+                y: 140
+                visible: true
+                text: qsTr("Add Repeat")
+                anchors.left: parent.horizontalCenter
+                anchors.leftMargin: 16
             }
         }
 
@@ -472,6 +580,7 @@ Window {
 
             TextEdit {
                 id: textEdit1
+                visible: popupEditTaskVis
                 text: textTask
                 anchors.fill: parent
                 font.pixelSize: 12
@@ -484,6 +593,7 @@ Window {
             Button {
                 id: buttonEditOk
                 x: 46
+                visible: popupEditTaskVis
                 text: qsTr("OK")
                 anchors.right: textEdit1.horizontalCenter
                 anchors.top: textEdit1.bottom
@@ -495,6 +605,7 @@ Window {
 
             Button {
                 id: buttonDeleteTask
+                visible: popupEditTaskVis
                 text: qsTr("Delete")
                 anchors.left: textEdit1.horizontalCenter
                 anchors.top: textEdit1.bottom
@@ -502,6 +613,163 @@ Window {
                 anchors.leftMargin: 20
                 anchors.bottomMargin: 20
                 anchors.topMargin: 20
+            }
+        }
+
+        Rectangle {
+            id: popupRepeats
+            visible: popupRepeatsVis
+            color: "#ffffff"
+            anchors.fill: parent
+            anchors.bottomMargin: -111
+            anchors.topMargin: -73
+            anchors.leftMargin: 0
+
+            Button {
+                id: buttonPopupRepeatsOk
+                x: 138
+                visible: true
+                text: qsTr("OK")
+                anchors.right: buttonPopupRepeatsCancel.left
+                anchors.top: textEdit2.bottom
+                anchors.bottom: parent.bottom
+                anchors.topMargin: 20
+                anchors.rightMargin: 32
+                anchors.bottomMargin: 20
+            }
+
+            Button {
+                id: buttonPopupRepeatsCancel
+                y: 140
+                text: qsTr("Cancel")
+                anchors.left: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 20
+                anchors.leftMargin: 16
+            }
+
+            Column {
+                id: column
+                height: 301
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.rightMargin: 0
+                anchors.leftMargin: 0
+                anchors.topMargin: 20
+
+                Rectangle {
+                    id: rectangle
+                    height: 40
+                    color: "#ffffff"
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.rightMargin: 0
+                    anchors.leftMargin: 0
+
+                    Switch {
+                        id: switchMon
+                        x: 138
+                        y: 0
+                        text: qsTr("Monday")
+                    }
+                }
+
+                Rectangle {
+                    id: rectangle1
+                    height: 40
+                    color: "#ffffff"
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.rightMargin: 0
+                    Switch {
+                        id: switchTue
+                        x: 138
+                        y: 0
+                        text: qsTr("Tuesday")
+                    }
+                    anchors.leftMargin: 0
+                }
+
+                Rectangle {
+                    id: rectangle2
+                    height: 40
+                    color: "#ffffff"
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.rightMargin: 0
+                    Switch {
+                        id: switchWed
+                        x: 138
+                        y: 0
+                        text: qsTr("Wednesday")
+                    }
+                    anchors.leftMargin: 0
+                }
+
+                Rectangle {
+                    id: rectangle4
+                    height: 40
+                    color: "#ffffff"
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.rightMargin: 0
+                    Switch {
+                        id: switchThu
+                        x: 138
+                        y: 0
+                        text: qsTr("Thursday")
+                    }
+                    anchors.leftMargin: 0
+                }
+
+                Rectangle {
+                    id: rectangle5
+                    height: 40
+                    color: "#ffffff"
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.rightMargin: 0
+                    Switch {
+                        id: switchFri
+                        x: 138
+                        y: 0
+                        text: qsTr("Friday")
+                    }
+                    anchors.leftMargin: 0
+                }
+
+                Rectangle {
+                    id: rectangle6
+                    height: 40
+                    color: "#ffffff"
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.rightMargin: 0
+                    Switch {
+                        id: switchSat
+                        x: 138
+                        y: 0
+                        text: qsTr("Saturday")
+                    }
+                    anchors.leftMargin: 0
+                }
+
+                Rectangle {
+                    id: rectangle7
+                    height: 40
+                    color: "#ffffff"
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.rightMargin: 0
+                    Switch {
+                        id: switchSun
+                        x: 138
+                        y: 0
+                        text: qsTr("Sunday")
+                    }
+                    anchors.leftMargin: 0
+                }
             }
         }
     }

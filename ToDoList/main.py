@@ -9,12 +9,11 @@ import os.path
 import pandas as pd
 import numpy as np
 import datetime as dt
+from Data.DataManagement import ManageTasks
 
 debug = True
 
 ##########
-# !DONE! ADD DELETE FROM DF, JS FUNCTION CURRENTLY ONLY DELETES FROM UI WHICH CAUSES ERROR WHEN FUNCTION READDED TO DATE
-# !DONE! ADD EDIT TASK FUNCTION
 # SIDE MENU IMPLEMENTAION
 # ADD SETTINGS MENU AND FILE
 # IMPLEMENT DARK MODE THEME
@@ -29,82 +28,80 @@ class Test(QtCore.QObject):
     def __init__(self):
         QtCore.QObject.__init__(self)
 
+    def addNewRepeat(self, repeat):
+        repeats_list = list(repeat.split(','))
+        repeats_list = list(map(int, repeats_list))
+        if any(ele == 1 for ele in repeats_list):
+            return repeats_list
+        else:
+            return False
+
     def check_repeats(self, dateDT):
         '''Checks for tasks matching day and returns a df of them'''
-
+        col_lst = [
+            'Reminder_mon', 'Reminder_tue', 'Reminder_wed', 'Reminder_thu',
+            'Reminder_fri', 'Reminder_sat', 'Reminder_sun'
+        ]
         repeat_df = pd.read_csv('repeat_df.csv')
         day = dateDT.isoweekday() # Get day of the week as int where Monday is 1
-        to_repeat = repeat_df.loc[(repeat_df['Reminder'] == day)]
+        to_repeat = repeat_df.loc[(repeat_df[list(col_lst)] == day).any(1)] # Return rows where day is in any reminder column
+        # to_repeat = to_repeat.drop(col_lst)
+        # to_repeat.loc['Date'] = dateDT
+        # to_repeat.apply(lambda row: self.addTaskPy(row['Task'], row['Date'], row['Date'], row['Button id'], 0), axis=1)
+        # print('!!!!', to_repeat)
         return to_repeat
 
-
-    def creatButtonPy(self, task, buttonId, date):
+    def creatButtonPy(self, task, buttonId, date, color, reminder):
         '''GENERATES TASK BUTTONS IN UI'''
 
         rootObject = engine.rootObjects()[0]
         task = task.split('(')[0]
         task = task.rstrip('\n')
-        rootObject.createButton(task, buttonId, date)
+        rootObject.createButton(task, buttonId, date, color, reminder)
 
-    @Slot(int, str)
-    def deleteTaskPy(self, buttonId, date):
-        tasks = pd.read_csv('df.csv')
-        tasks.drop(tasks[(tasks['Date'] == date) & (tasks['Button id'] == buttonId)].index, inplace=True)
-        tasks.to_csv('df.csv', index=False)
+    @Slot(str, int, str, str)
+    def deleteTaskPy(self, task, buttonId, date, repeat):
+        if repeat == '':
+            ManageTasks(date, task, buttonId).delete_single_task()
+        else:
+            ManageTasks(date, task, buttonId).delete_repeat_task()
         self.showTasks(date)
 
     @Slot(str, str, str)
     def debug(self, text, text1, text2):
         '''Use for printing console.log from JS code'''
 
-        print(f'Begin Degug:\n{text} {text1} {text2}')
+        # print(f'Begin Degug:\n{text} {text1} {text2}')
+        pass
 
     def showTasks(self, date):  # SHOW TASKS AS BUTTONS
         rootObject = engine.rootObjects()[0]
-        tasks = pd.read_csv('df.csv')
         date = dt.datetime.strptime(date, '''%B %d, %Y ''')
-        dateDT = date
         date = date.strftime('''%B %d, %Y ''')
-        df = tasks.loc[(tasks['Date'] == date)]
-        df = df.append(self.check_repeats(dateDT)) 
-        print(df)
-        df.apply(lambda row: self.creatButtonPy(row['Task'], row['Button id'], row['Date']), axis=1)
+        df_single, df_repeats = ManageTasks(date).gather_tasks()
+        df_single.apply(lambda row: self.creatButtonPy(
+            row['Task'], row['Button id'], row['Date'], row['Color'], ''
+            ), axis=1)
+        df_repeats.apply(lambda row: self.creatButtonPy(
+            row['Task'], row['Button id'], row['Date'], row['Color'], row['Reminder']
+            ), axis=1)
         rootObject.taskBoxReAn()
 
-    @QtCore.Slot(str, str, str, int)
-    def addTaskPy(self, task, taskDate, date, existingId):  # ADD NEW TASK
-        # REPLACE TRY LOOP?
-        # global tasks
-        global taskNum
-        tasks = pd.read_csv('df.csv')
+    @QtCore.Slot(str, str, str, int, str)
+    def addTaskPy(self, task, taskDate, date, existingId, repeat=''):  # ADD NEW TASK
         taskDate = dt.datetime.strptime(taskDate, '''%B %d, %Y ''')
         taskDate = taskDate.strftime('''%B %d, %Y ''')
-        #####
-        # CHECK IF TASK EXISTS ON DATE
-        #####
-        if existingId != 0:
-            buttonId = existingId
+        if repeat == '':
+            ManageTasks(taskDate, task, existingId).store_single_task()
         else:
-            try:
-                list1 = tasks.loc[(tasks['Date'] == date)]
-                print(list1['Button id'])
-                num = list1['Button id'].max() + 1
-                if np.isnan(num):
-                    num = 1
-            except Exception as e:
-                if debug:
-                    print(e)
-                num = 1
-                pass
-            buttonId = num
-
-        taskTemp = pd.DataFrame({'Date': [taskDate], 'Button id': [buttonId], 'Task': [f'{task}({taskDate}{taskNum})']})
-        taskTemp.to_csv('df.csv', mode='a', header=False)
+            ManageTasks(taskDate, task, existingId, repeat).store_repeat_task()
+       
         self.call()
         self.showTasks(taskDate)
 
     @QtCore.Slot('QString')
     def call(self):
+        '''Destroys buttons in UI'''
         rootObject = engine.rootObjects()[0]
         rootObject.destroyButtons()
 
@@ -112,7 +109,7 @@ class Test(QtCore.QObject):
     def getDatePy(self, day, update, date):  # GET DATE AND FORMAT. ALSO PROVIDES UPDATE CALL FOR WHEN DATE IS UPDATED IN UI
         rootObject = engine.rootObjects()[0]
         plusdays = dt.timedelta(days=day)
-        print(day)
+        # print(day)
         if day == 0:
             date = dt.datetime.today()
             date = dt.datetime.strftime(date, '''%B %d, %Y ''')
@@ -153,18 +150,18 @@ class setup():  # CLASS CONTAINING FUNCTIONS TO BE RAN ON STARTUP OR WHEN SETTIN
             tasks = pd.DataFrame(columns=['Date', 'Button id', 'Task', 'Color', 'Reminder'])  # SETUP DATAFRAME
             tasks.to_csv('df.csv')
             if debug:
-                print('Debug in class: setup function: start:\nCreated df.csv file as one was not found')
-        
+                # print('Debug in class: setup function: start:\nCreated df.csv file as one was not found')
+                pass
         if not os.path.exists('repeat_df.csv'):
-            tasks = pd.DataFrame(columns=['Date', 'Button id', 'Task', 'Color', 'Reminder'])  # SETUP DATAFRAME
+            tasks = pd.DataFrame(columns=[
+                'Date', 'Button id', 'Task', 'Color', 'Reminder_mon', 'Reminder_tue', 'Reminder_wed',
+                'Reminder_thu', 'Reminder_fri', 'Reminder_sat', 'Reminder_sun'
+            ])  # SETUP DATAFRAME
             tasks.to_csv('repeat_df.csv')
             
         # GLOBAL VARIABLES
         tasks = pd.read_csv('df.csv')  # FILE TO STORE TASKS AND THEIR PROPERTIES
         taskNum = {}
-
-
-
 
 if __name__ == "__main__":
     app = QGuiApplication(sys.argv)
@@ -179,6 +176,6 @@ if __name__ == "__main__":
     setup.start(x)
     print('working...')
     if not engine.rootObjects():
-        print('error')
+        # print('error')
         sys.exit(-1)
     sys.exit(app.exec())
