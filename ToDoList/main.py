@@ -28,29 +28,6 @@ class Test(QtCore.QObject):
     def __init__(self):
         QtCore.QObject.__init__(self)
 
-    def addNewRepeat(self, repeat):
-        repeats_list = list(repeat.split(','))
-        repeats_list = list(map(int, repeats_list))
-        if any(ele == 1 for ele in repeats_list):
-            return repeats_list
-        else:
-            return False
-
-    def check_repeats(self, dateDT):
-        '''Checks for tasks matching day and returns a df of them'''
-        col_lst = [
-            'Reminder_mon', 'Reminder_tue', 'Reminder_wed', 'Reminder_thu',
-            'Reminder_fri', 'Reminder_sat', 'Reminder_sun'
-        ]
-        repeat_df = pd.read_csv('repeat_df.csv')
-        day = dateDT.isoweekday() # Get day of the week as int where Monday is 1
-        to_repeat = repeat_df.loc[(repeat_df[list(col_lst)] == day).any(1)] # Return rows where day is in any reminder column
-        # to_repeat = to_repeat.drop(col_lst)
-        # to_repeat.loc['Date'] = dateDT
-        # to_repeat.apply(lambda row: self.addTaskPy(row['Task'], row['Date'], row['Date'], row['Button id'], 0), axis=1)
-        # print('!!!!', to_repeat)
-        return to_repeat
-
     def creatButtonPy(self, task, buttonId, date, color, reminder):
         '''GENERATES TASK BUTTONS IN UI'''
 
@@ -69,7 +46,7 @@ class Test(QtCore.QObject):
 
     @Slot(str, str, str)
     def debug(self, text, text1, text2):
-        '''Use for printing console.log from JS code'''
+        '''Deprectaed in ManageData branch, will be removed in future versions'''
 
         # print(f'Begin Degug:\n{text} {text1} {text2}')
         pass
@@ -136,42 +113,24 @@ class setup():  # CLASS CONTAINING FUNCTIONS TO BE RAN ON STARTUP OR WHEN SETTIN
         if darkMode is True:  # DARKMODE STYLING NOT IMPLEMENTED YET
             import style_rc_dark
         else:
-            import style_rc  # DEFAULT STYLE
+            from qml.styles import style_rc  # DEFAULT STYLE
 
     def start(x):  # SETS INITIAL PROPERTY TO ENABLE TO CALLS TO PY FROM JS
         engine.rootContext().setContextProperty("testModel", x)
         x.getDatePy(0, True, '')  # SETS DATE TO TODAYS DATE
-
-    def checkDf():
-        '''Checks for required df files and if they are not found it creates them'''
-
-        global tasks, taskNum
-        if not os.path.exists('df.csv'):
-            tasks = pd.DataFrame(columns=['Date', 'Button id', 'Task', 'Color', 'Reminder'])  # SETUP DATAFRAME
-            tasks.to_csv('df.csv')
-            if debug:
-                # print('Debug in class: setup function: start:\nCreated df.csv file as one was not found')
-                pass
-        if not os.path.exists('repeat_df.csv'):
-            tasks = pd.DataFrame(columns=[
-                'Date', 'Button id', 'Task', 'Color', 'Reminder_mon', 'Reminder_tue', 'Reminder_wed',
-                'Reminder_thu', 'Reminder_fri', 'Reminder_sat', 'Reminder_sun'
-            ])  # SETUP DATAFRAME
-            tasks.to_csv('repeat_df.csv')
             
         # GLOBAL VARIABLES
-        tasks = pd.read_csv('df.csv')  # FILE TO STORE TASKS AND THEIR PROPERTIES
         taskNum = {}
 
 if __name__ == "__main__":
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()
     directory = os.path.dirname(os.path.abspath(__file__))
-    setup.checkDf()
+    main_dirname = os.path.dirname(__file__)
+    qml_path = os.path.join(main_dirname, 'qml')
+    main_qml_script_path = (f'{qml_path}/ToDoList.qml')
     setup.getSettings(False)
-    engine.load(QtCore.QUrl.fromLocalFile(os.path.join(directory, 'ToDoList.qml')))
-    # Test = Test()
-    # engine.rootContext().setContextProperty("testModel", Test)
+    engine.load(QtCore.QUrl.fromLocalFile(main_qml_script_path))
     x = Test()
     setup.start(x)
     print('working...')

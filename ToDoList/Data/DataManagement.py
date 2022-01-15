@@ -6,22 +6,6 @@ import datetime as dt
 import sqlite3
 from sqlite3 import Error
 
-class db_connections():
-    def __init__(self):
-        self.dirname = os.path.dirname(__file__)
-        self.data_path = os.path.join(self.dirname, 'DataStorage')
-        self.path = (f'{self.data_path}/tasks.sqlite')
-
-    def create_connection(self):
-        connection = None
-        try:
-            connection = sqlite3.connect(self.path)
-            print('Success')
-        except Error as e:
-            print(f'''Error '{e}' occurred''')
-            
-        return connection
-
 class ManageTasks():
     '''Handles backend data storage and parsing'''
     def __init__(self, date, task='', existingId=0, repeat_days=''):
